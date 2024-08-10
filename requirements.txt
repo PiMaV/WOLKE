@@ -1,0 +1,9 @@
+dash_bootstrap_components
+plotly
+pandas
+numpy
+dash
+flask_socketio
+flask
+dash_mantine_components==0.12.1
+eventlet
