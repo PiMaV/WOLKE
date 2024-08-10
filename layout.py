@@ -6,6 +6,7 @@ from dash import (
     html,
     dash_table,
 )
+import configparser
 
 
 def create_layout(
@@ -402,9 +403,7 @@ def create_layout(
                             className="d-flex align-items-center",  # Ensures proper alignment of title and button
                         ),
                         dbc.Collapse(
-                            dbc.CardBody(
-                                [create_axis_dropdowns(all_selected_options)]
-                            ),
+                            dbc.CardBody([create_axis_dropdowns(all_selected_options)]),
                             id="collapse-axis-dropdowns",
                             is_open=True,
                         ),
@@ -490,38 +489,12 @@ def create_layout(
                                         [
                                             dbc.Row(
                                                 [
-                                                    # dmc.LoadingOverlay(
-                                                        dbc.Col(
-                                                            dcc.Graph(
-                                                                id="data-plot",
-                                                                style={
-                                                                    "minHeight": "800px"
-                                                                },
-                                                            ),
-                                                            width=12,
-                                                            lg=11,
-                                                            xl=11,
-                                                            className="mx-auto mb-2",
-                                                        ),
-                                                        # id="loading-data-plot",
-                                                        # type="default",  # You can choose the spinner style: 'graph', 'cube', 'circle', 'dot', or 'default'.
-                                                        # loaderProps={
-                                                        #     "variant": "dots",
-                                                        #     "color": "orange",
-                                                        #     "size": "xl",
-                                                        # },
-                                                    # )
-                                                ],
-                                                align="center",
-                                                className="mb-2",
-                                            ),
-                                            dbc.Row(
-                                                [
                                                     dbc.Col(
-                                                        html.Div(
-                                                            id="numpy-container",
-                                                            children="Image will be displayed here",
-                                                            # style={"width": "1024px", "minHeight": "800px", "margin": "0 auto"}  # Added width and adjusted maxWidth
+                                                        dcc.Graph(
+                                                            id="data-plot",
+                                                            style={
+                                                                "minHeight": "800px"
+                                                            },
                                                         ),
                                                         width=12,
                                                         lg=11,
@@ -532,43 +505,69 @@ def create_layout(
                                                 align="center",
                                                 className="mb-2",
                                             ),
-                                            # New Row for the Download Button
                                             dbc.Row(
                                                 [
-                                                    dbc.Col(  # Column for the download button
+                                                    dbc.Col(
+                                                        html.Div(
+                                                            id="numpy-container",
+                                                            children="Image will be displayed here",
+                                                        ),
+                                                        width=12,
+                                                        lg=11,
+                                                        xl=11,
+                                                        className="mx-auto mb-2",
+                                                    ),
+                                                ],
+                                                align="center",
+                                                className="mb-2",
+                                            ),
+                                            dbc.Row(
+                                                [
+                                                    dbc.Col(
                                                         html.Button(
                                                             "Download Dataset",
                                                             id="btn_image",
                                                         ),
-                                                        width={"size": 3, "offset": 1},
+                                                        width={"size": 3, "offset": 0},
                                                         className="text-center mb-2",
                                                     ),
-                                                    dbc.Col(  # Column for the URL field
+                                                    dbc.Col(
                                                         [
                                                             html.Label("URL for BLITZ"),
                                                             dbc.Input(
                                                                 type="text",
                                                                 id="url_input",
                                                                 value=full_url,
-                                                            ),  # Set value to the URL variable
+                                                            ),
                                                         ],
-                                                        width=3,  # Adjust width as needed
+                                                        width=3,
                                                     ),
-                                                    dbc.Col(  # Column for the TOKEN field
+                                                    dbc.Col(
                                                         [
                                                             html.Label("TOKEN"),
                                                             dbc.Input(
                                                                 type="text",
                                                                 id="token_input",
                                                                 value=token,
-                                                            ),  # Set value to the TOKEN variable
+                                                            ),
                                                         ],
-                                                        width=3,  # Adjust width as needed
+                                                        width=3,
+                                                    ),
+                                                    dbc.Col(
+                                                        dbc.Checkbox(
+                                                            id="harmonize-checkbox",
+                                                            label="Harmonize Image",
+                                                            style={
+                                                                "margin-top": "10px"
+                                                            },
+                                                        ),
+                                                        width={"size": 3, "offset": 0},
                                                     ),
                                                 ],
+                                                align="center",
                                                 className="mb-2",
                                             ),
-                                            # dcc.Download component for handling the actual download action
+                                            dcc.Store(id='harmonize-state-store', data={'harmonize': False}),
                                             dcc.Download(id="download-dataset"),
                                             dbc.Tooltip(
                                                 "Download Dataset from Server for local use.",
@@ -585,20 +584,17 @@ def create_layout(
                                                             "selectable": True,
                                                         }
                                                         for i in DF.columns
-                                                    ],  # Adjust column setup as needed
-                                                    page_size=20,  # Show 10 rows per page
+                                                    ],
+                                                    page_size=20,
                                                     style_table={
                                                         "height": "300px",
                                                         "overflowY": "auto",
-                                                    },  # Adjust height as needed
+                                                    },
                                                     filter_action="native",
                                                     sort_action="native",
-                                                    # sort_mode="multi",
-                                                    selected_rows=[
-                                                        0
-                                                    ],  # Select the first row by default
-                                                    export_format="csv",  # Enable CSV export
-                                                    export_headers="display",  # Use the display headers for the CSV export
+                                                    selected_rows=[0],
+                                                    export_format="csv",
+                                                    export_headers="display",
                                                 ),
                                                 className="mb-2",
                                             ),
@@ -612,7 +608,7 @@ def create_layout(
                                 ]
                             ),
                             id="collapse-feature-graphs",
-                            is_open=True,  # Initially shown; toggle to hide/show based on button click
+                            is_open=True,
                         ),
                     ],
                 )
@@ -714,14 +710,8 @@ def create_hist_range(selected_numeric_options, DF):
 
 
 def create_axis_dropdowns(all_options):
-    if len(all_options) > 2:
-        x=0
-        y=1
-        c=2
-    else:
-        x=0
-        y=0
-        c=0
+    x, y, color = load_config()       
+    
     card_content = html.Div(
         [
             dbc.Row(
@@ -734,7 +724,7 @@ def create_axis_dropdowns(all_options):
                             dcc.Dropdown(
                                 id="x-axis-dropdown",
                                 options=all_options,
-                                value=all_options[x]["value"],
+                                value=x,
                                 placeholder="Select X",
                                 clearable=False,
                             ),
@@ -749,7 +739,7 @@ def create_axis_dropdowns(all_options):
                             dcc.Dropdown(
                                 id="y-axis-dropdown",
                                 options=all_options,
-                                value=all_options[y]["value"],
+                                value=y,
                                 placeholder="Select Y",
                                 clearable=False,
                             ),
@@ -764,7 +754,7 @@ def create_axis_dropdowns(all_options):
                             dcc.Dropdown(
                                 id="color-dropdown",
                                 options=all_options,
-                                value=all_options[c]["value"],
+                                value=color,
                                 placeholder="Select Color",
                                 clearable=False,
                             ),
@@ -789,7 +779,7 @@ def create_multi_select_with_available_categories(
         for option in all_categorical_options
         if option not in selected_categorical_options
     ]
-    
+
     # Initialize the MultiSelect component even if inverted_options is empty
     return dbc.Col(
         dmc.MultiSelect(
@@ -798,8 +788,21 @@ def create_multi_select_with_available_categories(
             value=[],  # No options selected by default
             searchable=True,  # Allows searching within the dropdown, useful for many options
             clearable=True,
-            placeholder="No additional categories available"
-            if not inverted_options
-            else "Select categories",
+            placeholder=(
+                "No additional categories available"
+                if not inverted_options
+                else "Select categories"
+            ),
         ),
     )
+
+def load_config(config_file='config.ini'):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    # Extract settings with fallbacks to global defaults
+    x = config.get('image_plot', 'x', fallback=0)
+    y = config.get('image_plot', 'y', fallback=0)
+    color = config.get('image_plot', 'color', fallback=0)
+        
+    return x,y,color

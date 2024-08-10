@@ -1,14 +1,10 @@
+import logging
+import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
 from dash import Dash, Input, Output, MATCH, State, callback_context
 from functions import create_histogram_figure
 from dash.exceptions import PreventUpdate
-import logging
-
-# import json
-# import dash_core_components as dcc
-import dash_bootstrap_components as dbc
-import dash_mantine_components as dmc
 from dash import ALL
-
 
 def register_numeric_callbacks(app: Dash, DF, all_numeric_options):
     @app.callback(

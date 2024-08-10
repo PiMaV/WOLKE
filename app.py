@@ -14,7 +14,6 @@ from callbacks import register_numeric_callbacks, register_collapse_button_callb
 from dash.exceptions import PreventUpdate
 from flask_socketio import SocketIO
 from flask import abort, send_file
-# from werkzeug.utils import safe_join
 from functions import harmonize_image, prdebug, prinfo, prerror, prwarn, generate_token, sort_categories
 from dash import (
     Dash,
@@ -49,6 +48,7 @@ PORT = 8050
 VERSION = "v1.4"
 ROOT_DIR = ""
 SELECTED_ROWS = []
+HARMONIZE = False
 
 # Globals that will be populated later
 TOKEN = ""
@@ -112,6 +112,9 @@ def main():
     register_categorical_callbacks(app, DF, all_categorical_options)
     register_numeric_callbacks(app, DF, all_numeric_options)
     register_collapse_button_callbacks(app)
+    # add_additional_callbacks(app)
+    
+    app.secret_key = TOKEN
 
     # Run the Dash app
     prinfo(f"Running server on port {PORT} with DEBUG={DEBUG}...")
@@ -406,17 +409,17 @@ def display_selected_data_and_image(selectedData, clickData, active_cell, rows_d
 
 # IMAGE DISPLAY
 @app.callback(
-    Output(
-        "numpy-container", "children"
-    ),  # Update the container with the numpy content
+    Output("numpy-container", "children"),  # Update the container with the numpy content
     Input("image-selection", "data"),  # When the store is updated
+    Input('harmonize-checkbox', 'value'), # When the harmonize checkbox is toggled
+    # State('harmonize-state-store', 'data')  # Retrieve the harmonize state from the store
 )
-def display_numpy_image(data_store_content):
+def display_numpy_image(data_store_content, harmonize_state):
+    global HARMONIZE
     prdebug(f"Data Store Content received: {data_store_content}")  # Debug to track incoming data
 
     if data_store_content and all(
-        k in data_store_content
-        for k in ["relative_filepath"]
+        k in data_store_content for k in ["relative_filepath"]
     ):
         relative_filepath = data_store_content["relative_filepath"]
 
@@ -438,8 +441,12 @@ def display_numpy_image(data_store_content):
             # Assuming the numpy array can be indexed directly with image_number
             image_to_display = numpy_array
             
-            image_to_display = harmonize_image(image_to_display)
-            prdebug(f"Image harmonized")  # Debug after harmonizing image
+            HARMONIZE = harmonize_state
+            prinfo(f"Harmonize state: {HARMONIZE}")
+            
+            if HARMONIZE:
+                image_to_display = harmonize_image(image_to_display)
+                prdebug(f"Image harmonized")
 
             # Use Plotly to create a figure from the numpy array
             fig = px.imshow(image_to_display)
@@ -487,9 +494,9 @@ def get_selected_data(token):
                     # Load the numpy array from the file
                     numpy_array = np.load(safe_file_path)
                     prdebug(f"Loaded numpy array shape: {numpy_array.shape}")
-
-                    numpy_array = harmonize_image(numpy_array)
-                    prdebug(f"Processed numpy array shape: {numpy_array.shape}")
+                    if HARMONIZE:
+                        numpy_array = harmonize_image(numpy_array)
+                        prdebug(f"Exposed Image harmonized")
 
                     # Add the processed array to the list
                     selected_arrays.append(numpy_array)
