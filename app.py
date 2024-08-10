@@ -3,20 +3,19 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 import os
-import random
-import string
 import socket
 import logging
 import io
+import configparser
 
 from data_loader import load_data
 from layout import create_layout
 from callbacks import register_numeric_callbacks, register_collapse_button_callbacks, register_categorical_callbacks
 from dash.exceptions import PreventUpdate
 from flask_socketio import SocketIO
-from flask import abort, request, send_from_directory, send_file
+from flask import abort, send_file
 # from werkzeug.utils import safe_join
-from functions import prinfo, harmonize_image
+from functions import harmonize_image, prdebug, prinfo, prerror, prwarn, generate_token, sort_categories
 from dash import (
     Dash,
     dcc,
@@ -42,76 +41,81 @@ from dash import (
 # - https://plotly.com/python/pca-visualization/  Suuuuuper interesting
 # categories should be selectable beforehands (Maybe init file)
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# GLOBALS !!!
+# GLOBALS
 PLOT_MARGINALS = 'violin'  # 'histogram' | 'violin'
-DEBUG = True
+DEBUG = False
 PORT = 8050
 VERSION = "v1.4"
-ROOT_DIR = r"C:\Temp\Lukas_miniSub"
-ROOT_DIR = r"C:\Temp\Lukas_50Subset_Full\subset"
+ROOT_DIR = ""
 SELECTED_ROWS = []
 
+# Globals that will be populated later
+TOKEN = ""
+DF = None
+selected_numeric_options = []
+selected_categorical_options = []
 
-all_categorical_options, all_numeric_options, DF = load_data(ROOT_DIR)
-drop_list_num = []
-drop_list_cat = ['relative_filepath']
-# Remove dropped options from the 'all' lists
-all_categorical_options = [option for option in all_categorical_options if option['label'] not in drop_list_cat]
-all_numeric_options = [option for option in all_numeric_options if option['label'] not in drop_list_num]
-# Initialize 'selected' lists with the filtered 'all' lists
-selected_categorical_options = all_categorical_options.copy()
-selected_numeric_options = all_numeric_options.copy()
-
-TOKEN = "".join(
-    random.choices(string.ascii_letters + string.digits, k=8)
-)
-FULL_URL = f"http://{socket.gethostbyname(socket.gethostname())}:{PORT}"
-prinfo(f"Token: {TOKEN}")
-prinfo(f"Full URL: {FULL_URL}")
-
-
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])  # CYBORG |PULSE | SLATE |BOOTSTRAP
-
-# Initialize the Flask server
+# Initialize the Dash app (but don't run it yet)
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
-prinfo(f"Flask server initialized: {server}")
-
-# Initialize SocketIO
 socketio = SocketIO(server, async_mode="eventlet")
-prinfo(f"SocketIO initialized with server: {server}")
 
-# Optionally log the configuration details of SocketIO
-prinfo(f"SocketIO async modes: {socketio.async_mode}")
-prinfo(f"SocketIO message queue: {socketio.server.eio.ping_interval}, {socketio.server.eio.ping_timeout}")
+def load_config(config_file='config.ini'):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    # Extract settings with fallbacks to global defaults
+    root_dir = config.get('settings', 'root_dir', fallback=ROOT_DIR)
+    debug = config.getboolean('settings', 'debug', fallback=DEBUG)
+    port = config.getint('settings', 'port', fallback=PORT)
+    plot_marginals = config.get('settings', 'plot_marginals', fallback=PLOT_MARGINALS)
+    
+    return root_dir, debug, port, plot_marginals
 
+def main():
+    global ROOT_DIR, DEBUG, DF, selected_numeric_options, selected_categorical_options, TOKEN, PORT, PLOT_MARGINALS
 
-app.layout = create_layout(DF, all_categorical_options, all_numeric_options, selected_categorical_options, selected_numeric_options, VERSION, FULL_URL, TOKEN)
+    # Load the configuration
+    ROOT_DIR, DEBUG, PORT, PLOT_MARGINALS = load_config()
 
-register_categorical_callbacks(app, DF, all_categorical_options)
-register_numeric_callbacks(app, DF, all_numeric_options)
-register_collapse_button_callbacks(app)
+    # Set up logging
+    if DEBUG:
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+    # Load data and initialize global variables
+    all_categorical_options, all_numeric_options, DF = load_data(ROOT_DIR)
 
-def sort_categories(selected_column, df_filtered=None):
-    if df_filtered is None:
-        df_filtered = DF
+    drop_list_num = []
+    drop_list_cat = ['relative_filepath']
 
-    def convert_to_numeric(category_str):
-        try:
-            return float(category_str)  # Try converting to a number
-        except ValueError:
-            return category_str  # Treat as a non-numeric string
+    # Remove dropped options from the 'all' lists
+    all_categorical_options = [option for option in all_categorical_options if option['label'] not in drop_list_cat]
+    all_numeric_options = [option for option in all_numeric_options if option['label'] not in drop_list_num]
 
-    logging.info(df_filtered.shape)
-    all_categories = df_filtered[selected_column].unique()
-    logging.info(f"Categories: {all_categories}")
-    categories_as_numbers = [convert_to_numeric(cat) for cat in all_categories]
-    # sort numerically if possible, otherwise alphabetically
-    sorted_indices = np.argsort(categories_as_numbers)
-    logging.info(f"Sorted Categories: {all_categories[sorted_indices]}")
-    return all_categories[sorted_indices]
+    # Initialize 'selected' lists with the filtered 'all' lists
+    selected_categorical_options = all_categorical_options.copy()
+    selected_numeric_options = all_numeric_options.copy()
+
+    # Generate token and full URL
+    TOKEN = generate_token()
+    FULL_URL = f"http://{socket.gethostbyname(socket.gethostname())}:{PORT}"
+    
+    prinfo(f"Token: {TOKEN}")
+    prinfo(f"Full URL: {FULL_URL}")
+
+    # Define the layout only after data is loaded
+    app.layout = create_layout(DF, all_categorical_options, all_numeric_options, selected_categorical_options, selected_numeric_options, VERSION, FULL_URL, TOKEN)
+
+    register_categorical_callbacks(app, DF, all_categorical_options)
+    register_numeric_callbacks(app, DF, all_numeric_options)
+    register_collapse_button_callbacks(app)
+
+    # Run the Dash app
+    prinfo(f"Running server on port {PORT} with DEBUG={DEBUG}...")
+    socketio.run(server, host="0.0.0.0", debug=DEBUG, port=PORT)
 
 
 @app.callback(
@@ -202,7 +206,7 @@ def update_dataframe(
             logging.info(f"Dataframe size after X filtering: {df_filtered.shape}")
         else:  # Categorical Handling
             logging.info("Categorical Handling")
-            selected_categories = sort_categories(x_column_name, df_filtered)
+            selected_categories = sort_categories(DF, x_column_name, df_filtered)
             # Search for the index of the first and last selected category in sorted_categories:
             # selected_categories = sorted_categories[x_range[0] : x_range[1] + 1]
             df_filtered = df_filtered[
@@ -226,7 +230,7 @@ def update_dataframe(
             logging.info(f"Dataframe size after Y filtering: {df_filtered.shape}")
         else:  # Categorical Handling
             logging.info("Categorical Handling")
-            selected_categories = sort_categories(y_column_name, df_filtered)
+            selected_categories = sort_categories(DF, y_column_name, df_filtered)
             # Search for the index of the first and last selected category in sorted_categories:
             # selected_categories = sorted_categories[y_range[0] : y_range[1] + 1]
             df_filtered = df_filtered[
@@ -248,7 +252,7 @@ def update_dataframe(
             selected_categories = []
         else:  # Categorical Handling
             logging.info("Categorical Handling")
-            selected_categories = sort_categories(cluster_column_name, df_filtered)
+            selected_categories = sort_categories(DF, cluster_column_name, df_filtered)
             # Search for the index of the first and last selected category in sorted_categories:
             # selected_categories = sorted_categories[
                 # cluster_range[0] : cluster_range[1] + 1
@@ -361,11 +365,10 @@ def display_selected_data_and_image(selectedData, clickData, active_cell, rows_d
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
     store_out = {}
 
-    logging.info(f"callback_context: {callback_context}")
-    logging.info(f"Triggered ID: {triggered_id}")
-    logging.info(f"Selected Data: {selectedData}")
-    logging.info(f"Click Data: {clickData}")
-    logging.info(f"Active Cell: {active_cell}")
+    prdebug(f"Callback triggered by: {triggered_id}")  # Debug level for tracking the trigger
+    prdebug(f"Selected Data: {selectedData}")  # Debug level for the selected data
+    prdebug(f"Click Data: {clickData}")  # Debug level for the click data
+    prdebug(f"Active Cell: {active_cell}")  # Debug level for the active cell data
 
     if triggered_id == "data-plot" and selectedData:
         # Extract the IDs from the selected points
@@ -386,6 +389,7 @@ def display_selected_data_and_image(selectedData, clickData, active_cell, rows_d
             # Update the global variable with the selected rows
             selected_rows_global = table_data
             
+            prinfo("Data selected from scatter plot updated in table.")  # Info for successful selection
             return table_data, store_out
 
     elif triggered_id == "data-table" and active_cell and rows_data:
@@ -393,10 +397,12 @@ def display_selected_data_and_image(selectedData, clickData, active_cell, rows_d
         store_out = {
             "relative_filepath": row["relative_filepath"],
         }
+        prinfo("Data selected from table row updated in store.")  # Info for successful table row selection
         return no_update, store_out
 
-    # If no relevant interaction, return no updates
+    prwarn("No valid interaction detected, no update performed.")  # Warning for no valid interaction
     return no_update, {}
+
 
 # IMAGE DISPLAY
 @app.callback(
@@ -406,60 +412,64 @@ def display_selected_data_and_image(selectedData, clickData, active_cell, rows_d
     Input("image-selection", "data"),  # When the store is updated
 )
 def display_numpy_image(data_store_content):
-    # Check if data_store_content is not empty and contains required keys
-    logging.info(f"Data Store Content: {data_store_content}")
+    prdebug(f"Data Store Content received: {data_store_content}")  # Debug to track incoming data
+
     if data_store_content and all(
         k in data_store_content
         for k in ["relative_filepath"]
     ):
         relative_filepath = data_store_content["relative_filepath"]
-        # image_number = 0
-        # image_number = data_store_content["image_number"]
-        # position = data_store_content["position"]
+
+        prdebug(f"Relative filepath extracted: {relative_filepath}")  # Debug to track extracted filepath
 
         # Construct the full path to the numpy file
         full_file_path = os.path.join(ROOT_DIR, relative_filepath)
-        socketio.emit("send_file_message",{"file_name":relative_filepath})
-        logging.info(f"Full File Path: {full_file_path}")
+        prinfo(f"Processing file at path: {full_file_path}")  # Info to track the file being processed
 
-        # Load the numpy file
-        numpy_array = np.load(full_file_path)
-        logging.info(f"Loaded Numpy Array: {numpy_array.shape}")
+        # Emit a socket message to notify about the file being processed
+        socketio.emit("send_file_message", {"file_name": relative_filepath})
+        prdebug(f"SocketIO message emitted for file: {relative_filepath}")  # Debug to track socket messages
 
-        # Assuming the numpy array can be indexed directly with image_number
-        # Adjust as necessary if your data structure is different
-        image_to_display = numpy_array
-        
-        image_to_display = harmonize_image(image_to_display)
+        try:
+            # Load the numpy file
+            numpy_array = np.load(full_file_path)
+            prinfo(f"Numpy array loaded with shape: {numpy_array.shape}")  # Info to track successful file loading
 
-        # Use Plotly to create a figure from the numpy array
-        fig = px.imshow(image_to_display)
-        # Plot the position as a vertical line
-        # fig.add_vline(x=position, line_dash="dash", line_color="red")
+            # Assuming the numpy array can be indexed directly with image_number
+            image_to_display = numpy_array
+            
+            image_to_display = harmonize_image(image_to_display)
+            prdebug(f"Image harmonized")  # Debug after harmonizing image
 
-        fig.update_layout(
-            # width=1024,  # Set the figure width to a constant value
-            autosize=True,  # Enable autosize to make the figure responsive
-            # height=auto,  # Let Plotly adjust the height automatically based on the aspect ratio of the image
-            margin=dict(l=20, r=20, t=20, b=20),  # Optional: adjust margins as needed
-        )
+            # Use Plotly to create a figure from the numpy array
+            fig = px.imshow(image_to_display)
+            prdebug("Figure created from numpy array")  # Debug after creating the Plotly figure
 
-        # Return the figure to be displayed in the container
-        return dcc.Graph(figure=fig)
+            # Update the layout
+            fig.update_layout(
+                autosize=True,
+                margin=dict(l=20, r=20, t=20, b=20),
+            )
 
-    # If no data is selected or store content is not in the expected format
+            prinfo("Returning figure to be displayed")  # Info before returning the figure
+            return dcc.Graph(figure=fig)
+
+        except Exception as e:
+            prerror(f"Failed to load or process numpy file at {full_file_path}: {str(e)}")  # Error logging
+            return "Error loading image."
+
+    prwarn("No valid data or file path unavailable.")  # Warning when no valid data is provided
     return "No image selected or file path unavailable."
 
 
 @server.route('/<token>')
 def get_selected_data(token):
     global selected_rows_global
-    prinfo(f"Selected rows: {selected_rows_global}")
+    prdebug(f"Selected rows: {selected_rows_global}")
     prinfo("Received request to get selected data.")
 
     if token == TOKEN:
         try:
-            prinfo(f"Selected rows: {selected_rows_global}")
 
             # Initialize an empty list to hold each selected numpy array
             selected_arrays = []
@@ -467,29 +477,28 @@ def get_selected_data(token):
             for entry in selected_rows_global:
                 relative_path = entry.get("relative_filepath")
                 if not relative_path:
-                    prinfo(f"No relative_filepath found in entry: {entry}")
+                    prwarn(f"No relative_filepath found in entry: {entry}")
                     continue  # Skip this entry if there's no file path
                 
                 safe_file_path = os.path.abspath(os.path.join(ROOT_DIR, relative_path))
-                prinfo(f"Processing file: {safe_file_path}")
+                prdebug(f"Processing file: {safe_file_path}")
 
                 if os.path.isfile(safe_file_path):
                     # Load the numpy array from the file
                     numpy_array = np.load(safe_file_path)
-                    prinfo(f"Loaded numpy array shape: {numpy_array.shape}")
+                    prdebug(f"Loaded numpy array shape: {numpy_array.shape}")
 
-                    # Optional: Process the array (e.g., harmonize the image)
                     numpy_array = harmonize_image(numpy_array)
-                    prinfo(f"Processed numpy array shape: {numpy_array.shape}")
+                    prdebug(f"Processed numpy array shape: {numpy_array.shape}")
 
                     # Add the processed array to the list
                     selected_arrays.append(numpy_array)
                 else:
-                    prinfo(f"File not found: {safe_file_path}")
+                    prwarn(f"File not found: {safe_file_path}")
                     return abort(404)  # File not found
             
             if not selected_arrays:
-                prinfo("No files were found or processed.")
+                prwarn("No files were found or processed.")
                 return abort(404)  # No files were found or processed
 
             # Combine the selected arrays into a 3D array (stacking along a new axis)
@@ -508,9 +517,9 @@ def get_selected_data(token):
             return send_file(output, mimetype='application/octet-stream', download_name='selected_data.npy')
 
         except Exception as e:
-            prinfo(f"Error: {str(e)}")
+            prerror(f"Error: {str(e)}")
             return abort(400)  # Bad request
-    prinfo("Invalid or missing token.")
+    prwarn("Invalid or missing token.")
     return abort(404)  # Not found or bad token
 
 
@@ -526,7 +535,7 @@ def handle_disconnect():
 
 @socketio.on_error_default
 def default_error_handler(e):
-    prinfo(f"An error occurred: {e}")
+    prerror(f"An error occurred: {e}")
 
 # Example for catching all incoming events
 @socketio.on('*')
@@ -553,11 +562,7 @@ def func(n_clicks, data_store_content):
         # Handle the case where the data store is empty or does not contain the expected keys
         # You might want to return an error message or a specific behavior
         return None
-
+    
 
 if __name__ == "__main__":
-    
-    prinfo(f"Running server on port {PORT} with DEBUG={DEBUG}...")
-    socketio.run(server, host="0.0.0.0", debug=DEBUG, port=PORT) 
-    # app.run_server(debug=DEBUG)
-    #app.run_server(debug=DEBUG, host="0.0.0.0", port=PORT)
+    main()
