@@ -19,6 +19,22 @@ def create_layout(
     full_url="http://localhost:8050/",
     token="1234567890",
 ):
+    """
+    Creates the main layout of the Dash application.
+
+    Args:
+        DF (pd.DataFrame): The main dataframe.
+        all_categorical_options (list): All available categorical options.
+        all_numeric_options (list): All available numeric options.
+        selected_categorical_options (list): Initially selected categorical options.
+        selected_numeric_options (list): Initially selected numeric options.
+        version (str): App version string.
+        full_url (str): The full URL of the app.
+        token (str): Security token.
+
+    Returns:
+        dbc.Container: The main layout container.
+    """
     all_selected_options = selected_categorical_options + selected_numeric_options
     return dbc.Container(
         [  # Main container for Bootstrap layout, now fluid for full width
@@ -625,6 +641,16 @@ def create_layout(
 
 
 def create_hist_range(selected_numeric_options, DF):
+    """
+    Creates histogram range inputs for selected numeric options.
+
+    Args:
+        selected_numeric_options (list): List of selected numeric options.
+        DF (pd.DataFrame): The dataframe.
+
+    Returns:
+        html.Div: The content containing histograms and inputs.
+    """
     card_content = html.Div(
         [
             dbc.Row(
@@ -710,6 +736,15 @@ def create_hist_range(selected_numeric_options, DF):
 
 
 def create_axis_dropdowns(all_options):
+    """
+    Creates dropdowns for X, Y, and Color axes selection.
+
+    Args:
+        all_options (list): List of all available options.
+
+    Returns:
+        html.Div: Content with axis dropdowns.
+    """
     x, y, color = load_config()       
     
     card_content = html.Div(
@@ -772,6 +807,16 @@ def create_axis_dropdowns(all_options):
 def create_multi_select_with_available_categories(
     selected_categorical_options, all_categorical_options
 ):
+    """
+    Creates a multi-select component for adding more categories.
+
+    Args:
+        selected_categorical_options (list): Currently selected options.
+        all_categorical_options (list): All available options.
+
+    Returns:
+        dbc.Col: Column containing the multi-select.
+    """
     # Invert selected_categorical_options with respect to all_categorical_options
     # That means if a category is selected, it should not be available in the dropdown
     inverted_options = [
@@ -797,6 +842,15 @@ def create_multi_select_with_available_categories(
     )
 
 def load_config(config_file='config.ini'):
+    """
+    Loads initial axis configuration from config file.
+
+    Args:
+        config_file (str, optional): Path to config file. Defaults to 'config.ini'.
+
+    Returns:
+        tuple: (x, y, color) initial selections.
+    """
     config = configparser.ConfigParser()
     config.read(config_file)
     

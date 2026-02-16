@@ -5,6 +5,15 @@ import sqlite3
 from functions import prinfo
 
 def load_largest_table(db_file):
+    """
+    Connects to an SQLite database and loads the largest table into a pandas DataFrame.
+
+    Args:
+        db_file (str): Path to the database file.
+
+    Returns:
+        tuple: (DataFrame, table_name)
+    """
     conn = sqlite3.connect(db_file)
     
     # Get the list of tables in the database
@@ -30,6 +39,15 @@ def load_largest_table(db_file):
     return DF, largest_table
 
 def load_data(root_dir=None):
+    """
+    Loads data from the first .db file found in the root directory.
+
+    Args:
+        root_dir (str, optional): The directory to search for the database.
+
+    Returns:
+        tuple: (all_categorical_options, all_numeric_options, DF)
+    """
     prinfo(f"Loading data from {root_dir}...")
     # Efficiently get the first *.db file
     db_file = next(Path(root_dir).glob('*.db'), None)
@@ -47,11 +65,9 @@ def load_data(root_dir=None):
     prinfo(DF.info())
     df_numeric = DF.select_dtypes(include=["number"]).columns
 
-    # all_options = [{"label": col, "value": col} for col in DF.columns]
     all_categorical_options = [{"label": col, "value": col} for col in df_categorical]
     all_numeric_options = [{"label": col, "value": col} for col in df_numeric]
 
-    # all_options = sorted(all_options, key=lambda x: x['label'])
     all_categorical_options = sorted(all_categorical_options, key=lambda x: x['label'])
     all_numeric_options = sorted(all_numeric_options, key=lambda x: x['label'])
         
