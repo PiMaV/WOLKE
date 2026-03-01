@@ -638,6 +638,7 @@ def create_layout(
                 )
             ),
             dcc.Store(id="image-selection"),
+            dcc.Interval(id="viewer-sync-interval", interval=1500),
             dcc.Store(id="shared-selection-state", data={}),
             dcc.Store(id="selected-cats-store", data=selected_categorical_options),
             dcc.Store(id="selected-nums-store", data=selected_numeric_options),

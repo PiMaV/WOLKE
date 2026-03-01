@@ -3,7 +3,8 @@
 - 3D Scatter braucht evtl. noch 4tes dropdown (also z_column_name). Wenn diese "None" dann 2D; sonst 3D ?!
 - GL kann später noch implementiert werden
 
-- BLITZ bekommt aktuell "nur" ein bild; auvh wenn eine "Bildmenge" ausgesucht ist.
+- Die temp numpy arrays sollten vernünftige Namen bekommen; bzw. ich möchte eigentich den Filename oder "relativ_npy_path" mitgeben und in BLITZ darstellen
+
 
 # TODO:
 # - Online Repository for the data

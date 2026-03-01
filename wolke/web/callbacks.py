@@ -405,10 +405,23 @@ def register_data_and_plot_callbacks(
             else:
                 return no_update, {}
         elif triggered_id == "data-table" and active_cell and rows_data:
-            row = rows_data[active_cell["row"]]
+            row_index = active_cell["row"]
+            row = rows_data[row_index]
             store_out = {rel_col: row[rel_col]}
             if "image_number" in row:
                 store_out["image_number"] = row["image_number"]
+            state.selected_rows = rows_data
+            _socketio = getattr(app.server, "_wolke_socketio", None)
+            sync_idx = getattr(state, "_sync_table_index", None)
+            if sync_idx is not None:
+                if row_index != sync_idx:
+                    return no_update, store_out
+                state._sync_table_index = None
+            if _socketio:
+                if len(rows_data) > 1:
+                    _socketio.emit("send_file_message", {"file_name": "__selection__.npy", "index": row_index})
+                else:
+                    _socketio.emit("send_file_message", {"file_name": row[rel_col]})
             return no_update, store_out
         if not point_indices:
             return no_update, {}
@@ -431,10 +444,39 @@ def register_data_and_plot_callbacks(
             store_out["image_number"] = selected_rows.iloc[0]["image_number"]
         table_data = selected_rows.to_dict("records")
         state.selected_rows = table_data
+        _socketio = getattr(app.server, "_wolke_socketio", None)
+        if _socketio and table_data:
+            current_ids = tuple(r.get("id", i) for i, r in enumerate(table_data))
+            last_ids = getattr(state, "_last_emitted_selection_ids", None)
+            if current_ids != last_ids:
+                state._last_emitted_selection_ids = current_ids
+                if len(table_data) == 1:
+                    _socketio.emit("send_file_message", {"file_name": table_data[0][rel_col]})
+                else:
+                    _socketio.emit("send_file_message", {"file_name": "__selection__.npy"})
         return table_data, store_out
 
     # Store socketio on app.server for use in callback (Dash pattern)
     _socketio = getattr(app.server, "_wolke_socketio", None)
+
+    @app.callback(
+        Output("data-table", "active_cell"),
+        Input("viewer-sync-interval", "n_intervals"),
+        State("data-table", "data"),
+    )
+    def sync_table_to_viewer_index(n_intervals, table_data):
+        """When BLITZ sends viewer_index, set table selection to that row (Contract: viewer_index)."""
+        idx = getattr(state, "viewer_index", None)
+        if idx is None:
+            state._sync_table_index = None
+            return no_update
+        rows = table_data or []
+        if not rows or idx < 0 or idx >= len(rows):
+            state.viewer_index = None
+            return no_update
+        state.viewer_index = None
+        state._sync_table_index = idx
+        return {"row": idx, "column": 0}
 
     @app.callback(
         Output("numpy-container", "children"),
@@ -446,8 +488,6 @@ def register_data_and_plot_callbacks(
             return "No image selected or file path unavailable."
         relative_filepath = data_store_content[rel_col]
         full_file_path = os.path.join(base_dir, relative_filepath)
-        if _socketio:
-            _socketio.emit("send_file_message", {"file_name": relative_filepath})
         state.normalize_images = bool(normalize_state)
         try:
             numpy_array = load_image_as_array(full_file_path)

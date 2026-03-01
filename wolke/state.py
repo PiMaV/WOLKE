@@ -22,3 +22,6 @@ class AppState:
         self.token = token
         self.selected_rows: list[dict[str, Any]] = []
         self.normalize_images = False
+        self.viewer_index: int | None = None
+        self._last_emitted_selection_ids: tuple[int, ...] | None = None
+        self._sync_table_index: int | None = None
