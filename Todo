@@ -1,0 +1,20 @@
+- Auf Polars umstellen
+- alle "unterfunktionen" (zB Dataloader.py) auf Klassen umstellen 
+- 3D Scatter braucht evtl. noch 4tes dropdown (also z_column_name). Wenn diese "None" dann 2D; sonst 3D ?!
+- GL kann später noch implementiert werden
+
+- BLITZ bekommt aktuell "nur" ein bild; auvh wenn eine "Bildmenge" ausgesucht ist.
+
+# TODO:
+# - Online Repository for the data
+# - we need groupby per "imageset"
+# - Numerics should be able to be deselected
+# - x,y,z, in layout is hardcoded for multifil atm
+
+# BUG:
+# - Clicking on the histograms has a problem:   File "C:\INP\Projekte\Python\WOLKE\app.py", line 1050, in <listcomp>
+    # point["customdata"][0] for point in selectedData["points"]
+
+# IDEAS / INFO:
+# - https://plotly.com/python/pca-visualization/  Suuuuuper interesting
+# categories should be selectable beforehands (Maybe init file)
