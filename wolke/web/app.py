@@ -51,6 +51,7 @@ def create_app(config_path: str | None = None) -> tuple[Dash, object, object, Ap
         plot_y = all_numeric[1]["label"] if len(all_numeric) > 1 else all_numeric[0]["label"] if all_numeric else all_categorical[0]["label"]
     if plot_color not in all_opts_labels:
         plot_color = all_numeric[0]["label"] if all_numeric else all_categorical[0]["label"]
+    prinfo("Plot-Achsen: x=%s, y=%s, color=%s", plot_x, plot_y, plot_color)
 
     drop_path = [config.relative_filepath_column]
     all_categorical = [o for o in all_categorical if o["label"] not in drop_path]
@@ -89,6 +90,7 @@ def create_app(config_path: str | None = None) -> tuple[Dash, object, object, Ap
         VERSION,
         full_url,
         token,
+        viewer_sync_interval_ms=config.viewer_sync_interval_ms,
     )
     app.secret_key = token
 

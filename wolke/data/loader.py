@@ -1,5 +1,10 @@
 """
 Load DB table into DataFrame; derive categorical/numeric options for UI.
+
+Spaltentypen werden anhand des Pandas-Dtyps entschieden:
+- Numerisch: select_dtypes(include=["number"]) – INTEGER/REAL in SQLite → Histogramme, Slider, kontinuierliche Achsen.
+- Kategorisch: select_dtypes(include=["object", "category"]) – TEXT in SQLite → Dropdown-Filter, diskrete Farben.
+Fuer Kategorien in der UI muessen Spalten also als Text (object) vorliegen; Integer-Spalten werden immer als numerisch behandelt.
 """
 import logging
 import sqlite3
@@ -23,6 +28,9 @@ class DataLoader:
         with sqlite3.connect(self.db_filename) as conn:
             df = pd.read_sql(f"SELECT * FROM {self.table_name}", conn)
         logger.info("Data loaded from %s.", self.db_filename)
+        if "id" not in df.columns:
+            df.insert(0, "id", range(len(df)))
+            logger.info("Added missing 'id' column for plot selection.")
 
         cat_cols = df.select_dtypes(include=["object", "category"]).columns
         df[cat_cols] = df[cat_cols].apply(lambda x: x.astype("category"))

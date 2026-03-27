@@ -20,6 +20,7 @@ def create_layout(
     version,
     full_url="http://localhost:8050/",
     token="1234567890",
+    viewer_sync_interval_ms=1500,
 ):
     all_selected_options = selected_categorical_options + selected_numeric_options
     return dbc.Container(
@@ -638,7 +639,7 @@ def create_layout(
                 )
             ),
             dcc.Store(id="image-selection"),
-            dcc.Interval(id="viewer-sync-interval", interval=1500),
+            dcc.Interval(id="viewer-sync-interval", interval=viewer_sync_interval_ms),
             dcc.Store(id="shared-selection-state", data={}),
             dcc.Store(id="selected-cats-store", data=selected_categorical_options),
             dcc.Store(id="selected-nums-store", data=selected_numeric_options),

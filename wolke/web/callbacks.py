@@ -10,6 +10,7 @@ import dash_mantine_components as dmc
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from dash import ALL, MATCH, Dash, dcc, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 
@@ -269,7 +270,10 @@ def register_data_and_plot_callbacks(
             return _fig, _tbl
         except Exception as e:
             logger.exception("update_dataframe failed: %s", e)
-            empty_fig = px.scatter(x=[], y=[]).update_layout(height=800)
+            empty_fig = go.Figure(data=[go.Scatter(x=[], y=[], mode="markers")]).update_layout(
+                height=800,
+                title="Fehler beim Erzeugen des Graphen – siehe Server-Log.",
+            )
             empty_table = [
                 {"Category": "Original", "Data Points": 0, "Percent": "-"},
                 {"Category": "Subsampled", "Data Points": 0, "Percent": "-"},
@@ -297,16 +301,39 @@ def register_data_and_plot_callbacks(
         n_num = len(selected_numeric_options)
         left_limits = list(all_left_limits) if all_left_limits and len(all_left_limits) >= n_num else []
         right_limits = list(all_right_limits) if all_right_limits and len(all_right_limits) >= n_num else []
+        def _safe_lim(s: pd.Series, get_min: bool):
+            v = s.min(skipna=True) if get_min else s.max(skipna=True)
+            if pd.isna(v):
+                return -np.inf if get_min else np.inf
+            return float(v)
+
         if len(left_limits) < n_num or len(right_limits) < n_num:
-            left_limits = [float(df[o["value"]].min()) for o in selected_numeric_options]
-            right_limits = [float(df[o["value"]].max()) for o in selected_numeric_options]
+            left_limits = [_safe_lim(df[o["value"]], True) for o in selected_numeric_options]
+            right_limits = [_safe_lim(df[o["value"]], False) for o in selected_numeric_options]
         for index, option in enumerate(selected_numeric_options):
             col = option["value"]
             if col not in df_filtered.columns:
                 continue
             left, right = left_limits[index], right_limits[index]
-            if left is not None and right is not None:
-                df_filtered = df_filtered[(df_filtered[col] >= left) & (df_filtered[col] <= right)]
+            try:
+                left_f, right_f = float(left), float(right)
+            except (TypeError, ValueError):
+                continue
+            if not (pd.isna(left_f) or pd.isna(right_f)):
+                df_filtered = df_filtered[(df_filtered[col] >= left_f) & (df_filtered[col] <= right_f)]
+        if len(df_filtered) == 0:
+            df_filtered = df.sample(frac=subsample_ratio, random_state=42)
+            if dropdown_values and len(dropdown_values) == len(selected_cats):
+                for dropdown_value, option in zip(dropdown_values, selected_cats):
+                    col = option["value"]
+                    if dropdown_value is not None:
+                        vals = dropdown_value if isinstance(dropdown_value, (list, tuple)) else [dropdown_value]
+                        df_filtered = df_filtered[df_filtered[col].isin(vals)]
+            left_limits = [_safe_lim(df[o["value"]], True) for o in selected_numeric_options]
+            right_limits = [_safe_lim(df[o["value"]], False) for o in selected_numeric_options]
+            logger.warning(
+                "Plot: 0 Zeilen nach Numeric-Limits – zeige Subset mit vollen Spannen (Limits ggf. falsch oder zu eng)."
+            )
         selected_categories = []
         if x_column_name in df_filtered.columns:
             if pd.api.types.is_numeric_dtype(df[x_column_name]):
@@ -351,6 +378,12 @@ def register_data_and_plot_callbacks(
                 selected_categories = sort_categories(df, cluster_column_name, df_filtered)
                 df_filtered = df_filtered[df_filtered[cluster_column_name].isin(selected_categories)]
         n_orig, n_sub, n_filt = df.shape[0], sub_shape[0], df_filtered.shape[0]
+        if n_filt == 0:
+            logger.warning(
+                "Plot: 0 Zeilen nach Filter (subsample=%s, x=%s, y=%s, color=%s). "
+                "Numeric limits oder Kategorien-Filter lockern.",
+                subsample_ratio, x_column_name, y_column_name, cluster_column_name,
+            )
         percent_org = (n_orig / n_sub) * 100
         percent_filt = (n_filt / n_sub) * 100
         data_for_table = [
@@ -502,8 +535,8 @@ def register_data_and_plot_callbacks(
             fig.update_layout(autosize=True, margin=dict(l=20, r=20, t=20, b=20))
             return dcc.Graph(figure=fig)
         except Exception as e:
-            prerror(f"Failed to load image: {e}")
-            return "Error loading image."
+            prerror("Failed to load image: %s (Pfad: %s)", e, full_file_path)
+            return f"Error loading image: {full_file_path}"
 
     @app.callback(
         Output("download-dataset", "data"),

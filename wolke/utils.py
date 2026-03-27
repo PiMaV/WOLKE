@@ -29,7 +29,10 @@ def prerror(msg: str, *args: Any, **kwargs: Any) -> None:
 
 
 def load_image_as_array(path: str) -> np.ndarray:
-    """Load .npy or image file (PNG/JPEG etc.) as numpy array (2D or 3D)."""
+    """
+    Load .npy or image file as numpy array (2D or 3D).
+    Supports: .npy (NumPy); images via Pillow: .png, .jpg, .jpeg, .tif, .bmp, .webp, etc.
+    """
     path = str(path)
     if path.lower().endswith(".npy"):
         return np.load(path)
@@ -41,7 +44,7 @@ def load_image_as_array(path: str) -> np.ndarray:
             arr = arr[..., :3]
         return arr
     except ImportError:
-        raise RuntimeError("Pillow required to load image files. Install with: uv add pillow")
+        raise RuntimeError("Pillow required for image files (PNG/JPEG/etc.). Install with: uv add pillow")
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:

@@ -36,13 +36,17 @@ class Config:
             raise FileNotFoundError(f"Config not found: {self._path}")
         parser.read(self._path)
 
+        def _get(section: str, key: str) -> str:
+            val = parser.get(section, key)
+            return val.strip().strip('"').strip("'")
+
         # Data: resolve db path relative to config file's directory (not cwd)
         config_dir = os.path.dirname(self._path)
-        raw_db = parser.get("data", "db_filename")
+        raw_db = _get("data", "db_filename")
         self.db_filename = raw_db if os.path.isabs(raw_db) else os.path.join(config_dir, raw_db)
         self.db_filename = os.path.abspath(self.db_filename)
-        self.table_name = parser.get("data", "table_name")
-        self.relative_filepath_column = parser.get("data", "relative_filepath_column")
+        self.table_name = _get("data", "table_name")
+        self.relative_filepath_column = _get("data", "relative_filepath_column")
         self.image_base_dir = os.path.dirname(self.db_filename)
 
         # General (env overrides)
@@ -51,11 +55,18 @@ class Config:
             self.debug = parser.getboolean("general", "debug")
         port_env = os.environ.get("WOLKE_PORT")
         self.port = int(port_env) if port_env else parser.getint("general", "port")
+        interval_env = os.environ.get("WOLKE_VIEWER_SYNC_INTERVAL")
+        if interval_env:
+            self.viewer_sync_interval_ms = int(interval_env)
+        elif parser.has_option("general", "viewer_sync_interval_ms"):
+            self.viewer_sync_interval_ms = parser.getint("general", "viewer_sync_interval_ms")
+        else:
+            self.viewer_sync_interval_ms = 1500
 
         # Plot
-        self.plot_x = parser.get("plot", "x")
-        self.plot_y = parser.get("plot", "y")
-        self.plot_color = parser.get("plot", "color")
+        self.plot_x = _get("plot", "x")
+        self.plot_y = _get("plot", "y")
+        self.plot_color = _get("plot", "color")
 
     @property
     def config_path(self) -> str:

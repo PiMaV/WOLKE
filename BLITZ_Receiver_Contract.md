@@ -13,7 +13,7 @@ Damit WOLKE die Metadaten anzeigen und Dateien an den Viewer senden kann, muss D
 | Anforderung | Beschreibung |
 |-------------|--------------|
 | **Eine Tabelle** | Mindestens eine Tabelle (Name in WOLKE-Config: `[data] table_name`, z.B. `sample_table`). |
-| **Pfad-Spalte** | Eine Spalte mit **relativen Pfaden** zu den Bild-/Daten-Dateien (z.B. `.npy`, PNG, JPEG). Spaltenname in Config: `[data] relative_filepath_column` (z.B. `relativ_npy_path`). |
+| **Pfad-Spalte** | Eine Spalte mit **relativen Pfaden** zu Dateien: **.npy** (NumPy) oder **Bilder** (z.B. .png, .jpg, .jpeg, .tif, .bmp). Spaltenname in Config: `[data] relative_filepath_column` (z.B. `relativ_npy_path` oder `relpath`). |
 | **Basisverzeichnis** | Alle Pfade sind **relativ zum Verzeichnis der DB-Datei**. WOLKE loest `{DB-Verzeichnis}/{relativer_Pfad}`. |
 
 ### Optional, aber empfohlen
@@ -23,6 +23,18 @@ Damit WOLKE die Metadaten anzeigen und Dateien an den Viewer senden kann, muss D
 | **id** | Ganzzahl-Spalte (z.B. fuer Plot-Selektion). |
 | **Numerische Spalten** | z.B. `mean`, `std`, `sharpness`, `position`, `entropy` – fuer Scatter/Filter in WOLKE. |
 | **Kategorische Spalten** | z.B. `label` – fuer Gruppierung/Filter. |
+
+### Spaltentypen: Numerisch vs. Kategorisch (WOLKE entscheidet am Typ)
+
+WOLKE teilt Spalten **automatisch** nach dem **Pandas-Dtyp** ein (abgeleitet aus SQLite):
+
+| WOLKE-Nutzung | SQLite-Typ | Pandas-Dtyp | Hinweis |
+|---------------|------------|-------------|---------|
+| **Numerisch** | INTEGER, REAL | `number` | Histogramme, Min/Max-Slider, kontinuierliche Achsen (x/y/color). |
+| **Kategorisch** | TEXT | `object` oder `category` | Dropdown-Filter, diskrete Farben/Labels im Plot. |
+
+- **Fuer Kategorien** muessen Spalten also **als Text (TEXT)** in der DB stehen oder als Pandas-`object`/`category` ankommen. Integer-Spalten (z.B. `1`, `2`, `3` als Codes) werden **immer als numerisch** behandelt und erscheinen nicht als Kategorie-Dropdown.
+- Wenn du z.B. eine Spalte `label` mit Werten wie "A", "B", "C" als Kategorie nutzen willst: als **TEXT** speichern, nicht als INTEGER.
 
 ### Beispiel-Schema (DAMPF kann so liefern)
 
