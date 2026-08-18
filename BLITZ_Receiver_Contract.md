@@ -129,6 +129,8 @@ Wenn der Nutzer **in der unteren Tabelle eine Zelle anklickt** (Auswahl bleibt m
 - bei `file_name === "__selection__.npy"` und vorhandenem **`index`**: das bereits geladene Array nutzen und **nur** `arr[index]` anzeigen (kein erneuter GET);
 - wenn das Paket noch nicht geladen ist: zuerst `?filename=__selection__.npy` laden, dann `arr[index]` anzeigen.
 
+Ist das Paket im Viewer schon der aktuelle Cube, ist Index-only ein **Frame-Seek** (kein Reload, kein Options-Reset, kein BUSY).
+
 Damit reduziert sich der Traffic beim Durchklicken der Tabelle auf ein kleines Socket-Event mit Index.
 
 #### Implementierungsvorschlag fuer BLITZ (Index + Cache, zur Debatte)
