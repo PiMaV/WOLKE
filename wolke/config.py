@@ -20,6 +20,7 @@ def _resolve_config_path() -> str:
         os.path.join(cwd, "config.ini"),
         os.path.join(repo_root, "config.ini"),
         os.path.join(os.environ.get("DATA_FOLDER", "/data"), "config.ini"),
+        os.path.join(repo_root, "config.ini.example"),
         os.path.join(repo_root, "sample_data", "config.ini.example"),
     ]:
         if os.path.isfile(candidate):

@@ -1,0 +1,57 @@
+# Onefile binaries when you push a tag v* (e.g. v2.0.0).
+# Before tagging: set version in pyproject.toml to match the tag (without "v").
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build EXE
+        run: |
+          uv sync --extra dev
+          uv run pyinstaller wolke.spec
+          if (!(Test-Path dist/WOLKE.exe)) { throw "dist/WOLKE.exe not found" }
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/WOLKE.exe
+          generate_release_notes: true
+
+  build-linux-binary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build binary
+        run: |
+          uv sync --extra dev
+          uv run pyinstaller wolke.spec
+          mv dist/WOLKE dist/WOLKE-linux-x86_64
+          chmod +x dist/WOLKE-linux-x86_64
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/WOLKE-linux-x86_64
+          generate_release_notes: true

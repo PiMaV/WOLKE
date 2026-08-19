@@ -1,0 +1,17 @@
+# Out-of-the-box sample (after: uv run python scripts/generate_sample_data.py)
+# Copy to config.ini and point db_filename at your DAMPF SQLite DB when ready.
+# Paths: no quotes; backslashes or forward slashes (e.g. C:/data/...).
+[data]
+db_filename = sample_data/sample.db
+table_name = sample_table
+relative_filepath_column = relativ_npy_path
+
+[general]
+debug = False
+port = 8050
+
+[plot]
+x = mean
+y = std
+color = sharpness
+plot_marginals = violin

@@ -5,6 +5,7 @@ venv
 *.db
 sample_data/
 config.ini
+config_*.ini
 .env
 *.log
 dist/

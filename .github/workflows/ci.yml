@@ -1,0 +1,26 @@
+# Smoke-check install + sample DB generator (no pytest suite yet).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync, sample data, load config
+        run: |
+          uv sync --extra dev
+          uv run python scripts/generate_sample_data.py
+          cp config.ini.example config.ini
+          uv run python -c "from wolke.config import Config; c = Config(); print(c.table_name)"
