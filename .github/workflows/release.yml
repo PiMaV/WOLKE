@@ -50,6 +50,26 @@ jobs:
           mv dist/WOLKE dist/WOLKE-linux-x86_64
           chmod +x dist/WOLKE-linux-x86_64
 
+      - name: Smoke import (Dash assets must be bundled)
+        run: |
+          uv run python scripts/generate_sample_data.py
+          cp config.ini.example dist/config.ini
+          cp -a sample_data dist/
+          set +e
+          timeout 8 dist/WOLKE-linux-x86_64 > /tmp/wolke-smoke.out 2>&1
+          code=$?
+          set -e
+          cat /tmp/wolke-smoke.out
+          if grep -q "package-info.json\|Invalid async_mode\|allow_unsafe_werkzeug\|Failed to execute script" /tmp/wolke-smoke.out; then
+            echo "Frozen import failed"
+            exit 1
+          fi
+          # 124 = timeout (server stayed up); 0 = clean exit
+          if [ "$code" -ne 124 ] && [ "$code" -ne 0 ]; then
+            echo "Unexpected exit $code"
+            exit 1
+          fi
+
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:

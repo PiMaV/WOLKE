@@ -1,6 +1,6 @@
 [project]
 name = "wolke"
-version = "2.0.0"
+version = "2.0.1"
 description = "Web-Oriented Layout for Knowledge Exploration — metadata dashboard that feeds NumPy to BLITZ."
 readme = "README.md"
 license = { file = "LICENSE" }

@@ -19,7 +19,10 @@ def main() -> None:
     try:
         url = f"http://127.0.0.1:{port}"
         webbrowser.open(url)
-        socketio.run(server, host="0.0.0.0", port=port, debug=config.debug)
+        run_kw = {"host": "0.0.0.0", "port": port, "debug": config.debug}
+        if getattr(sys, "frozen", False):
+            run_kw["allow_unsafe_werkzeug"] = True
+        socketio.run(server, **run_kw)
     except OSError as e:
         if getattr(e, "winerror", None) == 10048 or (getattr(e, "errno", None) == 98):
             print(f"Port {port} ist bereits belegt. Anderen Port setzen: set WOLKE_PORT=8051 (Windows) bzw. WOLKE_PORT=8051 uv run python -m wolke")

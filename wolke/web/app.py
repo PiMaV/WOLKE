@@ -4,6 +4,7 @@ Create Dash app: config, state, data load, layout, callbacks, BLITZ endpoint.
 import logging
 import os
 import socket
+import sys
 
 import dash_bootstrap_components as dbc
 from dash import Dash
@@ -17,7 +18,7 @@ from wolke.web.callbacks import register_callbacks
 from wolke.web.layout import create_layout
 from wolke.web.plotter import PlotGenerator
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 
 def create_app(config_path: str | None = None) -> tuple[Dash, object, object, AppState, Config]:
@@ -76,7 +77,9 @@ def create_app(config_path: str | None = None) -> tuple[Dash, object, object, Ap
 
     app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
     server = app.server
-    socketio = __import__("flask_socketio").SocketIO(server, async_mode="eventlet")
+    # PyInstaller onefile cannot reliably import eventlet's async driver.
+    async_mode = "threading" if getattr(sys, "frozen", False) else "eventlet"
+    socketio = __import__("flask_socketio").SocketIO(server, async_mode=async_mode)
 
     app.layout = create_layout(
         df,
