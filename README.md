@@ -6,7 +6,9 @@ Browser dashboard for a **DAMPF** SQLite metadata database: filter, select, plot
 
 Overview and module links: **[wetter.mess.engineering](https://wetter.mess.engineering)**
 
-[Download the latest release](https://github.com/PiMaV/WOLKE/releases/latest) (Windows `.exe` and Linux binary).
+[Download the latest release](https://github.com/PiMaV/WOLKE/releases/latest): `WOLKE.exe` (Windows) or `WOLKE-linux-x86_64` (Linux), **plus** `config.ini.example`.
+
+Put the example in the same folder as the binary, copy it to `config.ini`, and set `db_filename` to your DAMPF SQLite database. The onefile build does not include a database.
 
 ## Install and run (sample data)
 
@@ -61,7 +63,7 @@ uv sync --extra dev
 uv run pyinstaller wolke.spec
 ```
 
-Output: `dist/WOLKE.exe` (Windows) or `dist/WOLKE` (Linux). Put `config.ini` next to the binary (or set `WOLKE_CONFIG`). Tag `v*` on GitHub publishes `WOLKE.exe` and `WOLKE-linux-x86_64`.
+Output: `dist/WOLKE.exe` (Windows) or `dist/WOLKE` (Linux). Put `config.ini` next to the binary (or set `WOLKE_CONFIG`). Tag `v*` on GitHub publishes the binary plus `config.ini.example`.
 
 ## License
 

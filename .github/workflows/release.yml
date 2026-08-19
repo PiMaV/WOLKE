@@ -70,8 +70,10 @@ jobs:
             exit 1
           fi
 
-      - name: Upload release asset
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/WOLKE-linux-x86_64
+          files: |
+            dist/WOLKE-linux-x86_64
+            config.ini.example
           generate_release_notes: true

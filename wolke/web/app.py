@@ -18,7 +18,7 @@ from wolke.web.callbacks import register_callbacks
 from wolke.web.layout import create_layout
 from wolke.web.plotter import PlotGenerator
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 
 def create_app(config_path: str | None = None) -> tuple[Dash, object, object, AppState, Config]:

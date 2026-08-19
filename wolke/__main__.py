@@ -13,7 +13,18 @@ def main() -> None:
     config_path = None
     if getattr(sys, "frozen", False):
         base_dir = os.path.dirname(sys.executable)
-        config_path = os.path.join(base_dir, "config.ini")
+        ini = os.path.join(base_dir, "config.ini")
+        example = os.path.join(base_dir, "config.ini.example")
+        if os.path.isfile(ini):
+            config_path = ini
+        elif os.path.isfile(example):
+            config_path = example
+        else:
+            print(
+                "No config.ini next to the binary. Download config.ini.example "
+                "from the GitHub release, copy it here as config.ini, and set db_filename."
+            )
+            sys.exit(1)
     app, server, socketio, state, config = create_app(config_path)
     port = config.port
     try:
